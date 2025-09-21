@@ -21,7 +21,7 @@ load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")  # Optional, for private models
 
 # FastAPI app
-app = FastAPI()
+app = FastAPI(title="AI Analysis API", version="1.0.0")
 
 # Enable CORS
 app.add_middleware(
@@ -50,6 +50,24 @@ class TextAnalysisRequest(BaseModel):
 
 class UrlAnalysisRequest(BaseModel):
     url: str
+
+# Health check endpoints - IMPORTANT for Render
+@app.get("/")
+async def root():
+    return {
+        "message": "AI Analysis API is running", 
+        "status": "healthy",
+        "endpoints": {
+            "text": "/analyze/text",
+            "url": "/analyze/url", 
+            "image": "/analyze/image",
+            "health": "/health"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "Service is healthy"}
 
 # Helper: format results
 def format_result(content_type, raw_result, input_text):
@@ -192,3 +210,16 @@ async def analyze_image(file: UploadFile = File(...)):
 @app.post("/analyze/video")
 async def analyze_video():
     raise HTTPException(status_code=501, detail="Video analysis not yet implemented")
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 AI Analysis API is starting up...")
+    print(f"📡 Server will be available at http://0.0.0.0:{os.environ.get('PORT', 8080)}")
+
+# For running directly (useful for local development)
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
+    print(f"Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
